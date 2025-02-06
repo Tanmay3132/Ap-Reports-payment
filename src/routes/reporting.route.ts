@@ -14,5 +14,6 @@ export class ReportsRoute implements Routes {
 
   private initializeRoutes() {
     this.router.get(`${this.path}`, apiKeyAuthenticationMiddleware, this.paymentReports.getReports);
+    this.router.post(`${this.path}`, apiKeyAuthenticationMiddleware, this.paymentReports.postReports);
   }
 }

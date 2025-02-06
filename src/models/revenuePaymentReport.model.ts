@@ -1,7 +1,8 @@
-import { IRevenueServicePaymentReport } from "@/interfaces/paymentReports.interface";
-import { Document, model, Schema } from "mongoose";
+import { IRevenueServicePaymentReport } from '@/interfaces/paymentReports.interface';
+import { Document, model, Schema } from 'mongoose';
 
-const revenuePaymentReportSchema: Schema = new Schema({
+const revenuePaymentReportSchema: Schema = new Schema(
+  {
     consumerid: String,
     ulbcode: String,
     service_code: String,
@@ -25,9 +26,14 @@ const revenuePaymentReportSchema: Schema = new Schema({
     is_payment_status: Boolean,
     created_date: String,
     updated_date: String,
+  },
+  { timestamps: true, strict: false },
+);
 
-},{timestamps:true, strict: false});
-
-const revenueServicePaymentReportModel = model<IRevenueServicePaymentReport & Document>('apgovtuseramountdetails', revenuePaymentReportSchema,'apgovtuseramountdetails');
+const revenueServicePaymentReportModel = model<IRevenueServicePaymentReport & Document>(
+  'apgovtuseramountdetails',
+  revenuePaymentReportSchema,
+  'apgovtuseramountdetails',
+);
 
 export default revenueServicePaymentReportModel;

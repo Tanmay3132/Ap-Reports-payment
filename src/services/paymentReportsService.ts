@@ -9,17 +9,16 @@ const Departments = {
   CDMA: 'cdma',
 };
 
-
 class PaymentReportsService {
   private revenueServicePaymentReports = revenueServicePaymentReportModel;
   private cdmaServicePaymentReports = CDMAServicePaymentReportModel;
-  public async getPaymentReports({ department, serviceName, status, startTime, endTime }): Promise<IPaymentReport[]> {
-    switch (department) {
+  public async getPaymentReports({ department, serviceName, status, startTime, endTime, correlationId }): Promise<IPaymentReport[]> {
+    switch (department.toLowerCase()) {
       case Departments.REVENUE: {
-        return await this.getPaymentReportsForRevenueService({ serviceName, status, startTime, endTime });
+        return await this.getPaymentReportsForRevenueService({ serviceName, status, startTime, endTime, correlationId });
       }
       case Departments.CDMA: {
-        return await this.getPaymentReportsForCDMAService({ serviceName, status, startTime, endTime });
+        return await this.getPaymentReportsForCDMAService({ serviceName, status, startTime, endTime, correlationId });
       }
       default: {
         throw new HttpException(403, `Invalid Department Name. ${department} doesn't exists`);
@@ -27,7 +26,7 @@ class PaymentReportsService {
     }
   }
 
-  private async getPaymentReportsForRevenueService({ serviceName, status, startTime, endTime }): Promise<IPaymentReport[]> {
+  private async getPaymentReportsForRevenueService({ serviceName, status, startTime, endTime, correlationId }): Promise<IPaymentReport[]> {
     try {
       const query: Partial<IRevenueServicePaymentReport> = {};
 
@@ -55,30 +54,29 @@ class PaymentReportsService {
         query.payment_status = this.getActualPaymentStatusCodesForRevenueService(status);
       }
 
-      logger.info(JSON.stringify({ query }));
+      logger.info(JSON.stringify({ query, correlationId }));
 
       const paymentReportsForRevenueService: IRevenueServicePaymentReport[] = await this.revenueServicePaymentReports.find(query).lean();
 
       const newPaymentReports: IPaymentReport[] = paymentReportsForRevenueService.map(singleReportDoc => {
         return {
-          _id: singleReportDoc._id,
+          // _id: singleReportDoc._id,
           department: Departments.REVENUE,
           service: singleReportDoc.servicename,
-          status: this.getPaymentStatusFromPaymentStatusCodesForRevenueService(singleReportDoc.payment_status) as 'success' | 'failed' | 'pending',
           amount: String(singleReportDoc.amount),
-          transactionId: singleReportDoc.transactionid,
-          deptTransactionId: singleReportDoc.transactionid_payment,
-          mobileNumber: singleReportDoc.mobileno,
+          mobile: singleReportDoc.mobileno,
+          status: this.getPaymentStatusFromPaymentStatusCodesForRevenueService(singleReportDoc.payment_status) as 'Success' | 'Failed' | 'Pending',
+          type: 'UPI',
           orderId: singleReportDoc.orderid,
           referenceId: singleReportDoc.reference_id,
-          type: 'UPI',
-          createdAt: singleReportDoc.createdate as string,
-          updatedAt: singleReportDoc.updated_date,
+          transactionId: singleReportDoc.transactionid,
+          departmentTransactionId: singleReportDoc.transactionid_payment,
+          initiatedOn: this.getISTDate(singleReportDoc.createdate) as string,
+          completedOn: this.getISTDate(singleReportDoc.updated_date),
         };
       });
 
       return newPaymentReports;
-
     } catch (error) {
       logger.error(
         JSON.stringify({
@@ -91,7 +89,7 @@ class PaymentReportsService {
     }
   }
 
-  private async getPaymentReportsForCDMAService({ serviceName, status, startTime, endTime }): Promise<IPaymentReport[]> {
+  private async getPaymentReportsForCDMAService({ serviceName, status, startTime, endTime, correlationId }): Promise<IPaymentReport[]> {
     try {
       const query: Partial<ICDMAPaymentReport> = {};
 
@@ -109,8 +107,7 @@ class PaymentReportsService {
         } else if (end) {
           query.created_date = { $lte: DateTime.fromISO(end.toISOString()).toUTC() };
         }
-      }
-      else {
+      } else {
         const start = DateTime.now().minus({ hours: 2 }).toUTC();
         query.created_date = { $gte: start };
       }
@@ -119,6 +116,8 @@ class PaymentReportsService {
         query.trans_status = this.getActualPaymentStatusCodesForCDMAService(status);
       }
 
+      logger.info(JSON.stringify({ query, correlationId }));
+
       const paymentReportsForCDMAService: ICDMAPaymentReport[] = await this.cdmaServicePaymentReports.find(query).lean();
 
       const newPaymentReports: IPaymentReport[] = paymentReportsForCDMAService.map(singleReportDoc => {
@@ -126,16 +125,16 @@ class PaymentReportsService {
           _id: singleReportDoc._id,
           department: Departments.CDMA,
           service: singleReportDoc.heading_msg,
-          status: this.getPaymentStatusFromPaymentStatusCodesForCDMAService(singleReportDoc.trans_status) as 'success' | 'failed',
+          status: this.getPaymentStatusFromPaymentStatusCodesForCDMAService(singleReportDoc.trans_status) as 'Success' | 'Failed',
           amount: String(singleReportDoc.amount),
           transactionId: singleReportDoc.tr_create_response.CFMS_TRID,
-          deptTransactionId: singleReportDoc.dept_transaction_id,
-          mobileNumber: singleReportDoc.mobileno,
+          departmentTransactionId: singleReportDoc.dept_transaction_id,
+          mobile: singleReportDoc.mobileno,
           // orderId: singleReportDoc.orderid,
           // referenceId: singleReportDoc.reference_id,
           type: 'UPI',
-          createdAt: singleReportDoc.created_date as string,
-          updatedAt: singleReportDoc.updated_date,
+          initiatedOn: singleReportDoc.created_date as string,
+          completedOn: singleReportDoc.updated_date,
         };
       });
 
@@ -168,17 +167,17 @@ class PaymentReportsService {
     return statusCode;
   }
 
-  private getPaymentStatusFromPaymentStatusCodesForRevenueService(status: string): string {
-    const statusMap: { [key: string]: string } = {
-      '0300': 'success',
-      '0399': 'failed',
-      '0002': 'pending',
+  private getPaymentStatusFromPaymentStatusCodesForRevenueService(status: string): 'Success' | 'Failed' | 'Pending' {
+    const statusMap = {
+      '0300': 'Success',
+      '0399': 'Failed',
+      '0002': 'Pending',
     };
 
-    const statusCode: string = statusMap[status];
+    const statusCode = statusMap[status];
 
     if (!statusCode) {
-      return 'failed';
+      return 'Failed';
     }
 
     return statusCode;
@@ -206,6 +205,17 @@ class PaymentReportsService {
     };
 
     return statusMap[status];
+  }
+
+  private getISTDate(dateInISO) {
+    // return dateInISO;
+
+    const date = new Date(dateInISO);
+    // date = DateTime.fromISO(date);
+    // console.log(date);
+
+    return DateTime.fromJSDate(date, { zone: 'utc' }).setZone('Asia/Kolkata').toFormat('yyyy-MM-dd HH:mm:ss');
+    // return DateTime.fromISO(date).setZone('Asia/Kolkata').toFormat('dd-MM-yyyy HH:mm:ss');
   }
 }
 

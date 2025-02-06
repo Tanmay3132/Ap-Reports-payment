@@ -2,16 +2,16 @@ export interface IPaymentReport {
   _id?: string;
   department: string;
   service: string;
-  status: 'success' | 'pending' | 'failed';
+  status: 'Success' | 'Pending' | 'Failed';
   amount: string;
   transactionId: string;
-  deptTransactionId: string;
-  mobileNumber: string;
+  departmentTransactionId: string;
+  mobile: string;
   orderId?: string;
   referenceId?: string;
   type: string;
-  createdAt: string;
-  updatedAt: string;
+  initiatedOn: string;
+  completedOn: string;
 }
 
 export interface IRevenueServicePaymentReport {
@@ -55,7 +55,7 @@ export interface ICDMAPaymentReport {
   others: object;
   tr_billfetch_response: object;
   tr_create_response: {
-    [key:string] : any
+    [key: string]: any;
   };
   tr_payment_response: string;
   msg_payload: string;
