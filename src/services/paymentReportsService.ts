@@ -3,11 +3,12 @@ import { ICDMAPaymentReport, IPaymentReport, IRevenueServicePaymentReport } from
 import CDMAServicePaymentReportModel from '@/models/cdmaPaymentReport.model';
 import revenueServicePaymentReportModel from '@/models/revenuePaymentReport.model';
 import { logger } from '@/utils/logger';
+import { DateTime } from 'luxon';
 const Departments = {
   REVENUE: 'revenue',
   CDMA: 'cdma',
 };
-const { DateTime } = require('luxon');
+
 
 class PaymentReportsService {
   private revenueServicePaymentReports = revenueServicePaymentReportModel;
@@ -33,20 +34,21 @@ class PaymentReportsService {
       if (serviceName) {
         query.servicename = serviceName;
       }
+
       if (startTime || endTime) {
         const start = startTime ? new Date(startTime) : new Date(new Date().setDate(new Date().getHours() - 2));
         const end = endTime ? new Date(endTime) : new Date();
 
         if (start && end) {
-          query.createdate = { $gte: DateTime.fromISO(start).toUTC(), $lte: DateTime.fromISO(end).toUTC() };
+          query.createdate = { $gte: DateTime.fromISO(start.toISOString()).toUTC(), $lte: DateTime.fromISO(end.toISOString()).toUTC() };
         } else if (start) {
-          query.createdate = { $gte: DateTime.fromISO(start).toUTC() };
+          query.createdate = { $gte: DateTime.fromISO(start.toISOString()).toUTC() };
         } else if (end) {
-          query.createdate = { $lte: DateTime.fromISO(end).toUTC() };
+          query.createdate = { $lte: DateTime.fromISO(end.toISOString()).toUTC() };
         }
       } else {
-        const start = DateTime.fromISO(new Date(new Date().setDate(new Date().getHours() - 2))).toUTC();
-        query.createdate = { $gte: DateTime.fromISO(start).toUTC() };
+        const start = DateTime.fromISO(new Date(new Date().setDate(new Date().getHours() - 2)).toISOString()).toUTC();
+        query.createdate = { $gte: start };
       }
 
       if (status) {
@@ -76,6 +78,7 @@ class PaymentReportsService {
       });
 
       return newPaymentReports;
+
     } catch (error) {
       logger.error(
         JSON.stringify({
@@ -100,12 +103,16 @@ class PaymentReportsService {
         const end = endTime ? new Date(endTime) : null;
 
         if (start && end) {
-          query.created_date = { $gte: DateTime.fromISO(start).toUTC(), $lte: DateTime.fromISO(start).toUTC() };
+          query.created_date = { $gte: DateTime.fromISO(start.toISOString()).toUTC(), $lte: DateTime.fromISO(end.toISOString()).toUTC() };
         } else if (start) {
-          query.created_date = { $gte: DateTime.fromISO(start).toUTC() };
+          query.created_date = { $gte: DateTime.fromISO(start.toISOString()).toUTC() };
         } else if (end) {
-          query.created_date = { $lte: DateTime.fromISO(start).toUTC() };
+          query.created_date = { $lte: DateTime.fromISO(end.toISOString()).toUTC() };
         }
+      }
+      else {
+        const start = DateTime.fromISO(new Date(new Date().setDate(new Date().getHours() - 2)).toISOString()).toUTC();
+        query.created_date = { $gte: start };
       }
 
       if (status) {
