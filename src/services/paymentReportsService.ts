@@ -47,7 +47,7 @@ class PaymentReportsService {
           query.createdate = { $lte: DateTime.fromISO(end.toISOString()).toUTC() };
         }
       } else {
-        const start = DateTime.fromISO(new Date(new Date().setDate(new Date().getHours() - 2)).toISOString()).toUTC();
+        const start = DateTime.now().minus({ hours: 2 }).toUTC();
         query.createdate = { $gte: start };
       }
 
@@ -111,7 +111,7 @@ class PaymentReportsService {
         }
       }
       else {
-        const start = DateTime.fromISO(new Date(new Date().setDate(new Date().getHours() - 2)).toISOString()).toUTC();
+        const start = DateTime.now().minus({ hours: 2 }).toUTC();
         query.created_date = { $gte: start };
       }
 
