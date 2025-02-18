@@ -118,23 +118,27 @@ class PaymentReportsService {
 
       logger.info(JSON.stringify({ query, correlationId }));
 
+      // const paymentReportsForCDMAService: ICDMAPaymentReport[] = await this.cdmaServicePaymentReports.find().lean();
       const paymentReportsForCDMAService: ICDMAPaymentReport[] = await this.cdmaServicePaymentReports.find(query).lean();
 
       const newPaymentReports: IPaymentReport[] = paymentReportsForCDMAService.map(singleReportDoc => {
         return {
-          _id: singleReportDoc._id,
+          // _id: singleReportDoc._id,
           department: Departments.CDMA,
-          service: singleReportDoc.heading_msg,
+          // service: singleReportDoc.heading_msg,
+          service: 'Know Your Dues',
+          subService: this.getCDMASubService(singleReportDoc.service_code),
           status: this.getPaymentStatusFromPaymentStatusCodesForCDMAService(singleReportDoc.trans_status) as 'Success' | 'Failed',
           amount: String(singleReportDoc.amount),
-          transactionId: singleReportDoc.tr_create_response.CFMS_TRID,
+          consumerId: String(singleReportDoc.consumerid),
+          transactionId: String(singleReportDoc.tr_create_response.CFMS_TRID),
           departmentTransactionId: singleReportDoc.dept_transaction_id,
           mobile: singleReportDoc.mobileno,
           // orderId: singleReportDoc.orderid,
           // referenceId: singleReportDoc.reference_id,
           type: 'UPI',
-          initiatedOn: singleReportDoc.created_date as string,
-          completedOn: singleReportDoc.updated_date,
+          initiatedOn: this.getISTDate(singleReportDoc.created_date) as string,
+          completedOn: this.getISTDate(singleReportDoc.updated_date),
         };
       });
 
@@ -198,10 +202,38 @@ class PaymentReportsService {
     return statusCode;
   }
 
+  private getCDMASubService(code: string): string {
+    switch (code.toString().toLowerCase()) {
+      case 'wt': {
+        return 'Water Tax Dues';
+      }
+
+      case 'pt': {
+        return 'Property Tax Dues';
+      }
+
+      case 'vlt': {
+        return 'Vacant Land Dues';
+      }
+
+      case 'stax': {
+        return 'Sewerage Dues';
+      }
+
+      case 'tl': {
+        return 'Trade License Dues';
+      }
+
+      default: {
+        return '';
+      }
+    }
+  }
+
   private getPaymentStatusFromPaymentStatusCodesForCDMAService(status: string): string {
     const statusMap: { [key: string]: string } = {
-      S: 'success',
-      F: 'failed',
+      S: 'Success',
+      F: 'Failed',
     };
 
     return statusMap[status];

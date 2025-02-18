@@ -24,8 +24,8 @@ const revenuePaymentReportSchema: Schema = new Schema(
     trans_status: String,
     callback_url: String,
     is_payment_status: Boolean,
-    created_date: String,
-    updated_date: String,
+    createdate: Date,
+    updated_date: Date,
   },
   { timestamps: true, strict: false },
 );
